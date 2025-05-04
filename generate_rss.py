@@ -75,7 +75,7 @@ def generate_rss(debt, household_count):
     pubdate = future_time.strftime('%a, %d %b %Y %H:%M:%S %z')
 
     per_household = debt / household_count
-    debt_title = f"${debt:,.0f}\n(${per_household:,.2f} per household)"
+    debt_title = f"🇳🇿 NZ Government Debt: ${debt:,.0f}\\n👉 Your household’s share: ${per_household:,.2f}"
 
     rss = ET.Element("rss", version="2.0")
     channel = ET.SubElement(rss, "channel")
