@@ -1,74 +1,22 @@
 
-import re
 import time
-import requests
 from datetime import datetime, timedelta
 import xml.etree.ElementTree as ET
-import pytz
 import random
 
 RSS_FILE = "debt_feed.xml"
 DEBT_CLOCK_URL = "https://www.debtclock.nz"
 
-# Fallback values (interpreted as NZ time)
-FALLBACK_PARAMS = {
-    "initial_debt": 175_464_000_000,
-    "target_debt": 192_810_000_000,
-    "start_time": int(datetime(2024, 7, 1, 0, 1, tzinfo=pytz.timezone("Pacific/Auckland")).timestamp()),
-    "end_time": int(datetime(2025, 6, 30, 23, 59, tzinfo=pytz.timezone("Pacific/Auckland")).timestamp()),
-    "population_size": 2_034_000  # Actually households
-}
+# Values copied from the website
+DEBT_START = 175_464_000_000
+START_TIME = 1719748800  # Monday, 1 July 2024 00:00:00 NZST in UNIX timestamp
+PER_SECOND_INCREASE = 550.038051750381
+HOUSEHOLDS = 2_034_500  # Corrected from JS variable populationSize
 
-def fetch_debt_parameters():
-    max_retries = 3
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
-    for attempt in range(max_retries):
-        try:
-            print(f"🔄 Attempt {attempt + 1} to fetch live data from {DEBT_CLOCK_URL}...")
-            response = requests.get(DEBT_CLOCK_URL, headers=headers, timeout=10)
-            if response.status_code == 200:
-                print("✅ Successfully fetched live data.")
-                return extract_parameters_from_html(response.text)
-            else:
-                print(f"❌ HTTP {response.status_code} received.")
-        except Exception as e:
-            print(f"❗ Exception on attempt {attempt + 1}: {e}")
-        time.sleep(3 * (attempt + 1))
-    print("⚠️ Failed to fetch live data after retries. Using fallback values.")
-    return FALLBACK_PARAMS
-
-def extract_parameters_from_html(html):
-    initial_debt_match = re.search(r"var\s+initialDebt\s*=\s*([\d.]+);", html)
-    target_debt_match = re.search(r"var\s+targetDebt\s*=\s*([\d.]+);", html)
-    population_match = re.search(r"var\s+populationSize\s*=\s*([\d.]+);", html)
-    start_match = re.search(r"var\s+startTime\s*=\s*new Date\(([^)]+)\);", html)
-    end_match = re.search(r"var\s+endTime\s*=\s*new Date\(([^)]+)\);", html)
-
-    if not all([initial_debt_match, target_debt_match, population_match, start_match, end_match]):
-        raise Exception("Failed to extract required parameters from HTML.")
-
-    initial_debt = float(initial_debt_match.group(1))
-    target_debt = float(target_debt_match.group(1))
-    population_size = int(float(population_match.group(1)))
-
-    start_parts = list(map(int, start_match.group(1).split(',')))
-    end_parts = list(map(int, end_match.group(1).split(',')))
-
-    tz = pytz.timezone("Pacific/Auckland")
-    start_time = int(datetime(*start_parts, tzinfo=tz).timestamp())
-    end_time = int(datetime(*end_parts, tzinfo=tz).timestamp())
-
-    return {
-        "initial_debt": initial_debt,
-        "target_debt": target_debt,
-        "start_time": start_time,
-        "end_time": end_time,
-        "population_size": population_size
-    }
-
-def calculate_current_debt(params, target_time):
-    progress = min(max((target_time.timestamp() - params["start_time"]) / (params["end_time"] - params["start_time"]), 0), 1)
-    debt = params["initial_debt"] + progress * (params["target_debt"] - params["initial_debt"])
+def calculate_debt_as_of(target_time):
+    now_utc = target_time.timestamp()
+    progress = now_utc - START_TIME
+    debt = DEBT_START + progress * PER_SECOND_INCREASE
     return round(debt)
 
 def get_midday_stat(current_debt, household_count, local_time):
@@ -102,19 +50,18 @@ def generate_rss(debt, household_count, pub_time):
     item = ET.SubElement(channel, "item")
     ET.SubElement(item, "title").text = debt_title.strip()
     ET.SubElement(item, "link").text = DEBT_CLOCK_URL
-    ET.SubElement(item, "pubDate").text = pub_time.strftime('%a, %d %b %Y %H:%M:%S %z')
+    ET.SubElement(item, "pubDate").text = pub_time.strftime('%a, %d %b %Y %H:%M:%S +1200')
     ET.SubElement(item, "guid").text = f"debt-{pub_time.timestamp()}"
 
     tree = ET.ElementTree(rss)
     tree.write(RSS_FILE, encoding="utf-8", xml_declaration=True)
 
 if __name__ == "__main__":
-    tz = pytz.timezone("Pacific/Auckland")
-    now = datetime.now(tz)
+    # Use the top of the next hour as the publication time (NZST offset)
+    now = datetime.utcnow()
     next_hour = now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+    
+    current_debt = calculate_debt_as_of(next_hour)
+    generate_rss(current_debt, HOUSEHOLDS, next_hour)
 
-    params = fetch_debt_parameters()
-    debt = calculate_current_debt(params, next_hour)
-    generate_rss(debt, params["population_size"], next_hour)
-
-    print(f"RSS updated: total=${debt:,.0f}, per household=${debt / params['population_size']:,.2f}, timestamp={next_hour}")
+    print(f"RSS updated: total=${current_debt:,.0f}, per household=${current_debt / HOUSEHOLDS:,.2f}")
