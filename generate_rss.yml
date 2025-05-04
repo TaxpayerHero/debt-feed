@@ -2,7 +2,7 @@ name: Generate RSS Feed
 
 on:
   schedule:
-    - cron: '0 * * * *'  # Every hour on the hour
+    - cron: '30 * * * *'  # Every hour at 30 minutes past the hour (UTC)
   workflow_dispatch:     # Allow manual runs from the Actions tab
 
 jobs:
