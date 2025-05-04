@@ -1,5 +1,3 @@
-import requests
-import re
 from datetime import datetime
 import xml.etree.ElementTree as ET
 
@@ -7,22 +5,12 @@ RSS_FILE = "debt_feed.xml"
 DEBT_CLOCK_URL = "https://www.debtclock.nz"
 
 def fetch_debt_parameters():
-    response = requests.get(DEBT_CLOCK_URL)
-    html = response.text
-
-    try:
-        initial_debt = float(re.search(r"initial_debt\s*=\s*(\d+\.?\d*)", html).group(1))
-        target_debt = float(re.search(r"target_debt\s*=\s*(\d+\.?\d*)", html).group(1))
-        start_time = int(re.search(r"start_time\s*=\s*(\d+)", html).group(1))
-        end_time = int(re.search(r"end_time\s*=\s*(\d+)", html).group(1))
-    except AttributeError:
-        raise Exception("Could not extract debt values from the page.")
-
+    # Forecast from Budget 2024:
     return {
-        "initial_debt": initial_debt,
-        "target_debt": target_debt,
-        "start_time": start_time,
-        "end_time": end_time
+        "initial_debt": 175.464,  # in billions (1 July 2024, 12:01am)
+        "target_debt": 192.810,   # in billions (30 June 2025, 11:59pm)
+        "start_time": int(datetime(2024, 7, 1, 0, 1).timestamp()),
+        "end_time": int(datetime(2025, 6, 30, 23, 59).timestamp())
     }
 
 def calculate_current_debt(params):
