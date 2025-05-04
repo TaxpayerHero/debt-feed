@@ -7,13 +7,13 @@ import xml.etree.ElementTree as ET
 RSS_FILE = "debt_feed.xml"
 DEBT_CLOCK_URL = "https://www.debtclock.nz"
 
-# Fallback values (Budget 2024 & population estimate)
+# Fallback values if site is unreachable
 FALLBACK_PARAMS = {
     "initial_debt": 175_464_000_000,
     "target_debt": 192_810_000_000,
     "start_time": int(datetime(2024, 7, 1, 0, 1).timestamp()),
     "end_time": int(datetime(2025, 6, 30, 23, 59).timestamp()),
-    "population_size": 5_247_000
+    "population_size": 2_034_000  # interpreted as households in DebtClock.nz
 }
 
 def fetch_debt_parameters():
@@ -39,7 +39,7 @@ def extract_parameters_from_html(html):
     end_match = re.search(r"var\s+endTime\s*=\s*new Date\(([^)]+)\);", html)
 
     if not all([initial_debt_match, target_debt_match, population_match, start_match, end_match]):
-        raise Exception("Failed to extract one or more parameters from HTML.")
+        raise Exception("Failed to extract required parameters from HTML.")
 
     initial_debt = float(initial_debt_match.group(1))
     target_debt = float(target_debt_match.group(1))
@@ -65,10 +65,10 @@ def calculate_current_debt(params):
     debt = params["initial_debt"] + progress * (params["target_debt"] - params["initial_debt"])
     return round(debt)
 
-def generate_rss(debt, population_size):
+def generate_rss(debt, household_count):
     now = datetime.utcnow().strftime('%a, %d %b %Y %H:%M:%S +0000')
-    per_person = debt / population_size
-    debt_title = f"${debt:,.0f}\n(${per_person:,.2f} per person)"
+    per_household = debt / household_count
+    debt_title = f"${debt:,.0f}\n(${per_household:,.2f} per household)"
 
     rss = ET.Element("rss", version="2.0")
     channel = ET.SubElement(rss, "channel")
@@ -89,4 +89,4 @@ if __name__ == "__main__":
     params = fetch_debt_parameters()
     debt = calculate_current_debt(params)
     generate_rss(debt, params["population_size"])
-    print(f"RSS updated: total=${debt:,.0f}, per person=${debt / params['population_size']:,.2f}")
+    print(f"RSS updated: total=${debt:,.0f}, per household=${debt / params['population_size']:,.2f}")
