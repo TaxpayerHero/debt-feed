@@ -3,17 +3,18 @@ import time
 import requests
 from datetime import datetime
 import xml.etree.ElementTree as ET
+import pytz
 
 RSS_FILE = "debt_feed.xml"
 DEBT_CLOCK_URL = "https://www.debtclock.nz"
 
-# Fallback values if site is unreachable
+# Fallback values (interpreted as NZ time)
 FALLBACK_PARAMS = {
     "initial_debt": 175_464_000_000,
     "target_debt": 192_810_000_000,
-    "start_time": int(datetime(2024, 7, 1, 0, 1).timestamp()),
-    "end_time": int(datetime(2025, 6, 30, 23, 59).timestamp()),
-    "population_size": 2_034_000  # interpreted as households in DebtClock.nz
+    "start_time": int(datetime(2024, 7, 1, 0, 1, tzinfo=pytz.timezone("Pacific/Auckland")).timestamp()),
+    "end_time": int(datetime(2025, 6, 30, 23, 59, tzinfo=pytz.timezone("Pacific/Auckland")).timestamp()),
+    "population_size": 2_034_000  # Actually households
 }
 
 def fetch_debt_parameters():
@@ -48,8 +49,9 @@ def extract_parameters_from_html(html):
     start_parts = list(map(int, start_match.group(1).split(',')))
     end_parts = list(map(int, end_match.group(1).split(',')))
 
-    start_time = int(datetime(*start_parts).timestamp())
-    end_time = int(datetime(*end_parts).timestamp())
+    tz = pytz.timezone("Pacific/Auckland")
+    start_time = int(datetime(*start_parts, tzinfo=tz).timestamp())
+    end_time = int(datetime(*end_parts, tzinfo=tz).timestamp())
 
     return {
         "initial_debt": initial_debt,
@@ -60,13 +62,15 @@ def extract_parameters_from_html(html):
     }
 
 def calculate_current_debt(params):
-    now = datetime.utcnow().timestamp()
+    now = datetime.now(pytz.timezone("Pacific/Auckland")).timestamp()
     progress = min(max((now - params["start_time"]) / (params["end_time"] - params["start_time"]), 0), 1)
     debt = params["initial_debt"] + progress * (params["target_debt"] - params["initial_debt"])
     return round(debt)
 
 def generate_rss(debt, household_count):
-    now = datetime.utcnow().strftime('%a, %d %b %Y %H:%M:%S +0000')
+    nz_now = datetime.now(pytz.timezone("Pacific/Auckland"))
+    pubdate = nz_now.strftime('%a, %d %b %Y %H:%M:%S %z')
+
     per_household = debt / household_count
     debt_title = f"${debt:,.0f}\n(${per_household:,.2f} per household)"
 
@@ -79,8 +83,8 @@ def generate_rss(debt, household_count):
     item = ET.SubElement(channel, "item")
     ET.SubElement(item, "title").text = debt_title
     ET.SubElement(item, "link").text = DEBT_CLOCK_URL
-    ET.SubElement(item, "pubDate").text = now
-    ET.SubElement(item, "guid").text = f"debt-{datetime.utcnow().timestamp()}"
+    ET.SubElement(item, "pubDate").text = pubdate
+    ET.SubElement(item, "guid").text = f"debt-{nz_now.timestamp()}"
 
     tree = ET.ElementTree(rss)
     tree.write(RSS_FILE, encoding="utf-8", xml_declaration=True)
