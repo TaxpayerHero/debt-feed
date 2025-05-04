@@ -24,7 +24,8 @@ def fetch_debt_parameters():
     for attempt in range(max_retries):
         try:
             print(f"🔄 Attempt {attempt + 1} to fetch live data from {DEBT_CLOCK_URL}...")
-            response = requests.get(DEBT_CLOCK_URL, timeout=10)
+            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+            response = requests.get(DEBT_CLOCK_URL, headers=headers, timeout=10)
 
             if response.status_code == 200:
                 print("✅ Successfully fetched live data.")
