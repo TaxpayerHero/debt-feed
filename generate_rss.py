@@ -23,13 +23,19 @@ def fetch_debt_parameters():
     max_retries = 3
     for attempt in range(max_retries):
         try:
+            print(f"🔄 Attempt {attempt + 1} to fetch live data from {DEBT_CLOCK_URL}...")
             response = requests.get(DEBT_CLOCK_URL, timeout=10)
+
             if response.status_code == 200:
-                html = response.text
-                return extract_parameters_from_html(html)
+                print("✅ Successfully fetched live data.")
+                return extract_parameters_from_html(response.text)
+            else:
+                print(f"❌ HTTP {response.status_code} received.")
         except Exception as e:
-            print(f"Attempt {attempt+1} failed: {e}")
+            print(f"❗ Exception on attempt {attempt + 1}: {e}")
+
         time.sleep(3 * (attempt + 1))
+
     print("⚠️ Failed to fetch live data after retries. Using fallback values.")
     return FALLBACK_PARAMS
 
