@@ -5,6 +5,7 @@ import random
 import requests
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
+import os  # For checking the event type
 
 # Constants
 RSS_FILE = "debt_feed.xml"
@@ -88,7 +89,11 @@ def generate_rss():
 
     tree = ET.ElementTree(rss)
     tree.write(RSS_FILE, encoding="utf-8", xml_declaration=True)
-    print(f"RSS updated: total=${debt:,.0f}, per household=${per_household:,.2f}")
+
+    # Determine trigger type
+    trigger_type = os.getenv('GITHUB_EVENT_NAME', 'manual')
+    print(f"RSS updated at {now.strftime('%Y-%m-%d %H:%M:%S %Z%z')} — Triggered by: {trigger_type}")
+    print(f"Debt total=${debt:,.0f}, per household=${per_household:,.2f}")
 
 
 if __name__ == "__main__":
