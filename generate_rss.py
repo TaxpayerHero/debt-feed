@@ -12,13 +12,13 @@ RSS_FILE = "debt_feed.xml"
 DEBT_CLOCK_URL = "https://www.debtclock.nz"
 
 # Hardcoded parameters from the live site
-DEBT_START = 175_464_000_000
-START_TIMESTAMP = 1719748800  # 1 July 2024 00:00:00 NZT
-PER_SECOND_INCREASE = 550.038051750381
-HOUSEHOLDS = 2_034_500
+DEBT_START = 250100000000
+START_TIMESTAMP = 1719705600  # 1 July 2024, 12:00am NZST
+PER_SECOND_INCREASE = 872.019279553526
+HOUSEHOLDS = 2034500
 
 # Election reference point
-ELECTION_DEBT = 175_600_000_000  # Based on October 31 estimate
+ELECTION_DEBT = 193_888_000_000  # Based on October 31 estimate
 ELECTION_DATE = datetime(2023, 10, 31, 0, 0, 0, tzinfo=pytz.timezone("Pacific/Auckland"))
 
 
@@ -42,7 +42,7 @@ def get_midday_stat(current_debt, household_count, now):
     stats.append(f"📈 That’s ${per_household_increase:,.0f} more debt per household since the election.")
 
     # Format 4: debt growth rate
-    stats.append("⏱️ Debt is increasing by $550.04 every second, $33,002 every minute, and $47,523,456 every day.")
+    stats.append("⏱️ Debt is increasing by $872.02 every second, $52,321 every minute, and $75,342,720 every day.")
 
     # Format 9: interest cost
     stats.append("💸 We're spending $28 million every day — just on interest.")
